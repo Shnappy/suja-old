@@ -1,127 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import AvailableRooms from './components/AvailableRooms';
-import CreateOrJoinRoom from './components/CreateOrJoinRoom';
-import GameRoom from './components/GameRoom';
-import JuryVotingPanel from './components/JuryVotingPanel';
-import Scoreboard from './components/Scoreboard';
+import React, { useState } from 'react';
+import MainPage from './components/MainPage';
 import socket from './socket';
-import axios from 'axios';
 
 function App() {
-  const [gameRoomId, setGameRoomId] = useState(null);
-  const [userRole, setUserRole] = useState(null);
   const [teams, setTeams] = useState([]);
-  const [currentTeam, setCurrentTeam] = useState(null);
+  const gameId = 'main-game'; // Using a single game ID for the main page
 
-  useEffect(() => {
-    const handleRoomLeave = (roomId) => {
-      if (!roomId) return;
-      socket.emit('leaveRoom', roomId, () => {
-        axios.delete(`http://localhost:5000/api/rooms/${roomId}`)
-          .then(() => {
-            console.log(`Room ${roomId} deleted successfully`);
-          })
-          .catch((error) => {
-            console.error('Error deleting room:', error);
-          });
-      });
-    };
+  const handleVote = (teamName, points) => {
+    socket.emit('voteTeam', { teamId: teamName, points });
+  };
 
-    socket.on('disconnect', () => {
-      if (gameRoomId) {
-        handleRoomLeave(gameRoomId);
+  const handleReset = () => {
+    socket.emit('resetGame', gameId, (response) => {
+      if (response.success) {
+        setTeams([]);
+      } else {
+        console.error('Failed to reset game:', response.message);
       }
     });
+  };
 
-    return () => {
-      if (gameRoomId) {
-        handleRoomLeave(gameRoomId);
+  const handleAddRound = () => {
+    console.log('Add New Round button clicked');
+    socket.emit('addRound', (response) => {
+      if (response.success) {
+        console.log('Round added successfully');
+      } else {
+        console.error('Failed to add round:', response.message);
       }
-    };
-  }, [gameRoomId]);
+    });
+  };
+  
 
-  const handlePurgeRooms = () => {
-    axios.delete('http://localhost:5000/api/rooms')
-      .then(() => {
-        console.log('All rooms purged successfully');
-      })
-      .catch((error) => {
-        console.error('Error purging rooms:', error);
+  const handleAddTeam = () => {
+    const teamName = prompt('Enter the new team name:');
+    console.log('Add New Team button clicked');
+    if (teamName) {
+      console.log('Team name entered:', teamName);
+      socket.emit('addTeam', { teamName }, (response) => {
+        if (response.success) {
+          // Do NOT update teams locally, let the server handle it
+          console.log('New team added:', teamName);
+        } else {
+          console.error('Failed to add team:', response.message);
+        }
       });
-  };
-
-  const handleCreateRoom = () => {
-    const roomName = prompt('Enter room name:');
-    const numberOfRounds = prompt('Enter number of rounds:');
-    const teamsInput = prompt('Enter team names separated by commas:');
-    if (roomName && numberOfRounds && teamsInput) {
-      const teamsArray = teamsInput.split(',').map(team => ({ name: team.trim(), score: 0 }));
-      axios.post('http://localhost:5000/api/rooms', { name: roomName, teams: teamsArray, totalRounds: parseInt(numberOfRounds) })
-        .then(response => {
-          console.log('Room created successfully:', response.data);
-          setGameRoomId(response.data._id);
-          setUserRole('GameMaster');
-          setTeams(response.data.teams);
-          setCurrentTeam(response.data.teams[0]);
-          socket.emit('joinRoom', response.data._id, (joinResponse) => {
-            if (joinResponse.success) {
-              console.log(`Joined room ${response.data._id} as GameMaster`);
-            } else {
-              console.error('Error joining room:', joinResponse.message);
-            }
-          });
-        })
-        .catch(error => {
-          console.error('Error creating room:', error);
-        });
     }
   };
-
-  const handleVote = (points) => {
-    if (!gameRoomId || !currentTeam) {
-      console.error('Cannot vote, no room or team available');
-      return;
-    }
-    socket.emit('voteTeam', { roomId: gameRoomId, teamId: currentTeam.name, points });
-  };
-
-  const handleNextTeam = () => {
-    if (!teams || teams.length === 0) {
-      console.error('No teams available to proceed');
-      return;
-    }
-    const currentIndex = teams.findIndex(team => team.name === currentTeam.name);
-    const nextIndex = (currentIndex + 1) % teams.length;
-    setCurrentTeam(teams[nextIndex]);
-  };
+  
+  
 
   return (
     <div className="App">
-      <button onClick={handlePurgeRooms}>Purge All Rooms</button>
-      <CreateOrJoinRoom
-        handleCreateRoom={handleCreateRoom}
-        availableRoomsComponent={
-          <AvailableRooms
-            setGameRoomId={setGameRoomId}
-            setUserRole={setUserRole}
-            setTeams={setTeams}
-            setCurrentTeam={setCurrentTeam}
-          />
-        }
+      <MainPage
+        gameId={gameId}
+        teams={teams}
+        setTeams={setTeams}
+        socket={socket}
+        handleVote={handleVote}
+        handleReset={handleReset}
+        handleAddRound={handleAddRound}
+        handleAddTeam={handleAddTeam}
       />
-      {gameRoomId && (
-        <GameRoom
-          gameRoomId={gameRoomId}
-          userRole={userRole}
-          teams={teams}
-          currentTeam={currentTeam}
-          setCurrentTeam={setCurrentTeam}
-          socket={socket}
-          handleVote={handleVote}
-          handleNextTeam={handleNextTeam}
-        />
-      )}
-      {teams.length > 0 && <Scoreboard teams={teams} />}
     </div>
   );
 }

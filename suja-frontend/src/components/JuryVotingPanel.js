@@ -29,7 +29,7 @@ function JuryVotingPanel({ gameRoomId, socket }) {
 
   const handleVote = (points) => {
     if (currentTeam && gameRoomId) {
-      socket.emit('voteTeam', { roomId: gameRoomId, teamId: currentTeam.name, points });
+      socket.emit('voteTeam', { teamId: currentTeam.name, points });
     }
   };
 
