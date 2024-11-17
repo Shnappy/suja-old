@@ -1,33 +1,73 @@
-import React, { useEffect, useState } from 'react';
-import socket from '../socket';
-import Scoreboard from '../components/Scoreboard';
-import JuryPanel from '../components/JuryPanel';
+import React, { useEffect } from 'react';
 
-const GameRoom = ({ gameId }) => {
-  const [scores, setScores] = useState([]);
-
+function GameRoom({ gameRoomId, userRole, teams, setTeams, currentTeam, setCurrentTeam, socket, handleVote, handleNextTeam }) {
   useEffect(() => {
-    // Join the specified game room when component mounts
-    socket.emit('joinGameRoom', gameId);
+    if (socket) {
+      socket.emit('joinRoom', gameRoomId, (response) => {
+        if (response.success) {
+          console.log(`Successfully joined room: ${gameRoomId}`);
+        } else {
+          console.error('Failed to join room:', response.message);
+        }
+      });
 
-    // Listen for score updates
-    socket.on('scoreUpdated', (data) => {
-      console.log('Score updated:', data);
-      setScores((prevScores) => [...prevScores, data]);
-    });
+      socket.on('scoreUpdate', (updatedTeams) => {
+        setTeams(updatedTeams);
+        const updatedCurrentTeam = updatedTeams.find((team) => team.name === currentTeam?.name);
+        if (updatedCurrentTeam) {
+          setCurrentTeam(updatedCurrentTeam);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.warn('Disconnected from server, attempting to reconnect...');
+        socket.emit('joinRoom', gameRoomId, (response) => {
+          if (response.success) {
+            console.log(`Rejoined room: ${gameRoomId}`);
+          } else {
+            console.error('Failed to rejoin room:', response.message);
+          }
+        });
+      });
+    }
 
     return () => {
-      socket.off('scoreUpdated'); // Clean up listener when unmounting
+      if (socket) {
+        socket.emit('leaveRoom', gameRoomId, () => {
+          console.log(`Left room: ${gameRoomId}`);
+        });
+        socket.off('scoreUpdate');
+        socket.off('disconnect');
+      }
     };
-  }, [gameId]);
+  }, [socket, gameRoomId, currentTeam?.name, setCurrentTeam, setTeams]);
 
   return (
     <div>
-      <h1>Game Room {gameId}</h1>
-      <Scoreboard scores={scores} />
-      <JuryPanel gameId={gameId} />
+      <h2>Game Room: {gameRoomId}</h2>
+      <h3>Role: {userRole}</h3>
+      {currentTeam && (
+        <div>
+          <h3>Evaluating Team: {currentTeam.name}</h3>
+          <button onClick={() => handleVote(1)}>+1 Point</button>
+          <button onClick={() => handleVote(-1)}>-1 Point</button>
+        </div>
+      )}
+      {userRole === 'GameMaster' && (
+        <button onClick={handleNextTeam}>Next Team</button>
+      )}
+      <div>
+        <h3>Teams:</h3>
+        <ul>
+          {teams.map((team) => (
+            <li key={team.name}>
+              {team.name} - Score: {team.score}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
-};
+}
 
 export default GameRoom;
