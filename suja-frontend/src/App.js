@@ -11,7 +11,7 @@ function App() {
   };
 
   const handleReset = () => {
-    socket.emit('resetGame', gameId, (response) => {
+    socket.emit('resetGame', (response) => {
       if (response.success) {
         setTeams([]);
       } else {

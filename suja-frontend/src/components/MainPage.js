@@ -25,8 +25,9 @@ function MainPage({ teams = [], setTeams, socket, handleVote, handleReset, handl
       });
 
       socket.on('gameReset', (resetTeams) => {
-        setTeams(resetTeams || []); // Ensure teams are always an array
-        setRounds([]); // Clear the rounds on game reset
+        console.log('Game has been reset');
+        setTeams(resetTeams || []); // Clear teams on reset
+        setRounds([]); // Clear rounds on game reset
       });
     }
   }, [socket, setTeams, setRounds]);
