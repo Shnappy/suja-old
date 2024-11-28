@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import styles from '../TeamList.module.css';
 
 function MainPage({ teams = [], setTeams, socket, handleVote, handleReset, handleAddRound, handleAddTeam }) {
   const [rounds, setRounds] = useState([]);
@@ -33,32 +34,32 @@ function MainPage({ teams = [], setTeams, socket, handleVote, handleReset, handl
   }, [socket, setTeams, setRounds]);
 
   return (
-    <div>
-      <h2>Standup Judging Game</h2>
-      <button onClick={handleReset}>Reset Game</button>
-      <button onClick={handleAddRound}>Add New Round</button>
-      <button onClick={handleAddTeam}>Add New Team</button>
+    <div className={styles} >
+      <h1>Standup Judging Game</h1>
+      <button className={styles.btn2}  onClick={handleReset}>Давай по-новой!</button>
+      <button className={styles.btn1}  onClick={handleAddRound}>РАУНД</button>
+      <button className={styles.btn1}  onClick={handleAddTeam}>Добавить Команду</button>
       <div>
-        <h3>Teams:</h3>
+        <h1>Команды:</h1>
         <ul>
           {teams.map((team) => (
-            <li key={team.name}>
-              {team.name} - Score: {team.score}
-              <button onClick={() => handleVote(team.name, 1)}>+1 Point</button>
-              <button onClick={() => handleVote(team.name, -1)}>-1 Point</button>
+            <li key={team.name} className={styles.teamItem}>
+              {team.name} - Очки: {team.score}
+              <button className={styles.btn1} onClick={() => handleVote(team.name, 1)}>Спелый</button>
+              <button className={styles.btn2} onClick={() => handleVote(team.name, -1)}>Гнилой</button>
             </li>
           ))}
         </ul>
       </div>
       <div>
-        <h3>Rounds:</h3>
+        <h1>Раунды:</h1>
         <ul>
           {rounds.map((round, index) => (
             <li key={index}>
-              <strong>Round {index + 1}:</strong>
+              <strong>Раунд {index + 1}:</strong>
               <ul>
                 {round.teams.map((team) => (
-                  <li key={team.name}>{team.name} - Score: {team.score}</li>
+                  <li key={team.name}>{team.name} - Очки: {team.score}</li>
                 ))}
               </ul>
             </li>
